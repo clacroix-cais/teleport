@@ -141,6 +141,8 @@ type ReadNodeAccessPoint interface {
 
 	// GetNetworkRestrictions returns networking restrictions for restricted shell to enforce
 	GetNetworkRestrictions(ctx context.Context) (types.NetworkRestrictions, error)
+
+	GetAccessPolicy(ctx context.Context, name string) (types.AccessPolicy, error)
 }
 
 // NodeAccessPoint is an API interface implemented by a certificate authority (CA) to be
@@ -276,6 +278,8 @@ type ReadProxyAccessPoint interface {
 	GetKubernetesClusters(ctx context.Context) ([]types.KubeCluster, error)
 	// GetKubernetesCluster returns the specified kubernetes cluster resource.
 	GetKubernetesCluster(ctx context.Context, name string) (types.KubeCluster, error)
+
+	GetAccessPolicy(ctx context.Context, name string) (types.AccessPolicy, error)
 }
 
 // SnowflakeSessionWatcher is watcher interface used by Snowflake web session watcher.
@@ -449,6 +453,8 @@ type ReadKubernetesAccessPoint interface {
 	GetKubernetesClusters(ctx context.Context) ([]types.KubeCluster, error)
 	// GetKubernetesCluster returns the specified kubernetes cluster resource.
 	GetKubernetesCluster(ctx context.Context, name string) (types.KubeCluster, error)
+
+	GetAccessPolicy(ctx context.Context, name string) (types.AccessPolicy, error)
 }
 
 // KubernetesAccessPoint is an API interface implemented by a certificate authority (CA) to be
@@ -516,6 +522,8 @@ type ReadAppsAccessPoint interface {
 
 	// GetApp returns the specified application resource.
 	GetApp(ctx context.Context, name string) (types.Application, error)
+
+	GetAccessPolicy(ctx context.Context, name string) (types.AccessPolicy, error)
 }
 
 // AppsAccessPoint is an API interface implemented by a certificate authority (CA) to be
@@ -583,6 +591,8 @@ type ReadDatabaseAccessPoint interface {
 
 	// GetDatabase returns the specified database resource.
 	GetDatabase(ctx context.Context, name string) (types.Database, error)
+
+	GetAccessPolicy(ctx context.Context, name string) (types.AccessPolicy, error)
 }
 
 // DatabaseAccessPoint is an API interface implemented by a certificate authority (CA) to be
@@ -650,6 +660,8 @@ type ReadWindowsDesktopAccessPoint interface {
 
 	// GetWindowsDesktopService returns a windows desktop host by name.
 	GetWindowsDesktopService(ctx context.Context, name string) (types.WindowsDesktopService, error)
+
+	GetAccessPolicy(ctx context.Context, name string) (types.AccessPolicy, error)
 }
 
 // WindowsDesktopAccessPoint is an API interface implemented by a certificate authority (CA) to be

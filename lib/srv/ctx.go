@@ -108,6 +108,8 @@ type AccessPoint interface {
 
 	// ConnectionDiagnosticTraceAppender adds a method to append traces into ConnectionDiagnostics.
 	services.ConnectionDiagnosticTraceAppender
+
+	GetAccessPolicy(ctx context.Context, name string) (types.AccessPolicy, error)
 }
 
 // Server is regular or forwarding SSH server.

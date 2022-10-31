@@ -5177,7 +5177,7 @@ func (a *ServerWithRoles) MaintainSessionPresence(ctx context.Context) (proto.Au
 }
 
 // CreatePolicy creates a new policy resource.
-func (a *ServerWithRoles) CreatePolicy(ctx context.Context, policy types.Policy) error {
+func (a *ServerWithRoles) CreatePolicy(ctx context.Context, policy types.AccessPolicy) error {
 	if err := a.action(apidefaults.Namespace, types.KindAccessPolicy, types.VerbCreate); err != nil {
 		return trace.Wrap(err)
 	}
@@ -5185,22 +5185,26 @@ func (a *ServerWithRoles) CreatePolicy(ctx context.Context, policy types.Policy)
 	return a.authServer.CreatePolicy(ctx, policy)
 }
 
-// GetPolicy fetches a policy resource by name.
-func (a *ServerWithRoles) GetPolicy(ctx context.Context, name string) (types.Policy, error) {
-	if err := a.action(apidefaults.Namespace, types.KindAccessPolicy, types.VerbRead); err != nil {
-		return nil, trace.Wrap(err)
+// GetAccessPolicy fetches a policy resource by name.
+func (a *ServerWithRoles) GetAccessPolicy(ctx context.Context, name string) (types.AccessPolicy, error) {
+	if a.serverAction() != nil {
+		if err := a.action(apidefaults.Namespace, types.KindAccessPolicy, types.VerbRead); err != nil {
+			return nil, trace.Wrap(err)
+		}
 	}
 
-	return a.authServer.GetPolicy(ctx, name)
+	return a.authServer.GetAccessPolicy(ctx, name)
 }
 
-// GetPolicies lists policies in the cluster
-func (a *ServerWithRoles) GetPolicies(ctx context.Context) ([]types.Policy, error) {
-	if err := a.action(apidefaults.Namespace, types.KindAccessPolicy, types.VerbList); err != nil {
-		return nil, trace.Wrap(err)
+// GetAccessPolicies lists policies in the cluster
+func (a *ServerWithRoles) GetAccessPolicies(ctx context.Context) ([]types.AccessPolicy, error) {
+	if a.serverAction() != nil {
+		if err := a.action(apidefaults.Namespace, types.KindAccessPolicy, types.VerbList); err != nil {
+			return nil, trace.Wrap(err)
+		}
 	}
 
-	return a.authServer.GetPolicies(ctx)
+	return a.authServer.GetAccessPolicies(ctx)
 }
 
 // NewAdminAuthServer returns auth server authorized as admin,
