@@ -836,6 +836,13 @@ func Run(ctx context.Context, args []string, opts ...cliOption) error {
 
 	config := app.Command("config", "Print OpenSSH configuration details")
 
+	puttyConfig := app.Command("puttyconfig", "Add PuTTY saved session configuration for specified hostname to Windows registry")
+	puttyConfig.Arg("[user@]host", "Remote hostname and optional login to use").Required().StringVar(&cf.UserHost)
+	// only expose `tsh config putty` subcommand on windows
+	if runtime.GOOS != constants.WindowsOS {
+		puttyConfig.Hidden()
+	}
+
 	f2 := app.Command("fido2", "FIDO2 commands").Hidden()
 	f2Diag := f2.Command("diag", "Run FIDO2 diagnostics").Hidden()
 
@@ -1076,6 +1083,8 @@ func Run(ctx context.Context, args []string, opts ...cliOption) error {
 		err = onRequestDrop(&cf)
 	case config.FullCommand():
 		err = onConfig(&cf)
+	case puttyConfig.FullCommand():
+		err = onPuttyConfig(&cf)
 	case aws.FullCommand():
 		err = onAWS(&cf)
 	case daemonStart.FullCommand():

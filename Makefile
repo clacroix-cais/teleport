@@ -166,7 +166,7 @@ endif
 
 # Build teleport/api with PIV? This requires the libpcsclite library for linux.
 #
-# PIV=yes and PIV=static enable static piv builds. This is used by the build 
+# PIV=yes and PIV=static enable static piv builds. This is used by the build
 # process to link a static library of libpcsclite for piv-go to connect to.
 #
 # PIV=dynamic enables dynamic piv builds. This can be used for local
@@ -428,7 +428,7 @@ build-archive:
 	tar $(TAR_FLAGS) -c teleport | gzip -n > $(RELEASE).tar.gz
 	rm -rf teleport
 	@echo "---> Created $(RELEASE).tar.gz."
-	
+
 #
 # make release-unix - Produces a binary release tarball containing teleport,
 # tctl, and tsh.
@@ -537,7 +537,7 @@ $(TEST_LOG_DIR):
 # so override the plugin location via environment variable when running in CI.
 #
 # Github Actions build uses /workspace as homedir and Helm can't pick up plugins by default there,
-# so override the plugin location via environemnt variable when running in CI. Github Actions provide CI=true 
+# so override the plugin location via environemnt variable when running in CI. Github Actions provide CI=true
 # environment variable.
 .PHONY: test-helm
 test-helm:
