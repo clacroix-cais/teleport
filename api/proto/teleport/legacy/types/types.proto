@@ -540,6 +540,60 @@ message MySQLOptions {
   string ServerVersion = 1 [(gogoproto.jsontag) = "server_version,omitempty"];
 }
 
+
+// LocalScriptInstallerV1 is used by the version control system to install
+// new teleport versions via a user-provided script.
+message LocalScriptInstallerV1 {
+  // Header is the common resource header.
+  ResourceHeader Header = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag) = "",
+    (gogoproto.embed) = true
+  ];
+  // Spec is the version installer script spec.
+  LocalScriptInstallerSpecV1 Spec = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag) = "spec"
+  ];
+}
+
+// LocalScriptInstallerSpecV1 specifies the details of a local version installer.
+message LocalScriptInstallerSpecV1 {
+  // Enabled indicates wether or not this installer is runnable.
+  bool Enabled = 1 [ (gogoproto.jsontag) = "enabled" ];
+
+  // Env is a set of optional env vars to be made available to the script.
+  map<string,string> Env = 2 [ (gogoproto.jsontag) = "env,omitempty" ];
+
+  // Shell optionally overrides the target shell (defaults to `/bin/sh`).
+  string Shell = 3 [ (gogoproto.jsontag) = "shell,omitempty" ];
+
+  // InstallScript is the install script to be run.
+  InstallScript = 4 [ (gogoproto.jsontag) = "install.sh,omitempty" ];
+
+  // RestartScript is the restart script to be run.
+  RestartScript = 5 [ (gogoproto.jsontag) = "restart.sh,omitempty" ];
+}
+
+
+// ExecScript is a message representing a script to be executed against a teleport instance. Used
+// by the version control system to execute install scripts.
+message ExecScript {
+  // Type is the type of exec operatin (e.g. version-control-script).
+  string Type = 1;
+  // ID is a random ID used to differentiate/correlate runs.
+  uint64 ID = 2;
+  // Expect optionally asserts details of the currently running teleport installation.
+  map<string, string> Expect = 3;
+  // Env is the env vars to be provided to the script.
+  map<string, string> Env = 4;
+  // Shell is the shell to be used to execute the script.
+  string Shell = 5;
+  // Script is the body of the script.
+  string Script = 6;
+}
+
+
 // ServerV2 represents a Node, App, Database, Proxy or Auth server in a Teleport cluster.
 message ServerV2 {
   option (gogoproto.goproto_stringer) = false;
