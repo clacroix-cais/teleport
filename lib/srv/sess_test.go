@@ -85,7 +85,6 @@ func TestParseAccessRequestIDs(t *testing.T) {
 			require.Equal(t, out, tt.result)
 		})
 	}
-
 }
 
 func TestSession_newRecorder(t *testing.T) {
@@ -212,9 +211,9 @@ func TestSession_newRecorder(t *testing.T) {
 					AccessChecker: services.NewAccessCheckerWithRoleSet(&services.AccessInfo{
 						Roles: []string{"dev"},
 					}, "test", services.RoleSet{
-						&types.RoleV5{
+						&types.RoleV6{
 							Metadata: types.Metadata{Name: "dev", Namespace: apidefaults.Namespace},
-							Spec: types.RoleSpecV5{
+							Spec: types.RoleSpecV6{
 								Options: types.RoleOptions{
 									RecordSession: &types.RecordSession{
 										SSH: constants.SessionRecordingModeStrict,
@@ -251,9 +250,9 @@ func TestSession_newRecorder(t *testing.T) {
 					AccessChecker: services.NewAccessCheckerWithRoleSet(&services.AccessInfo{
 						Roles: []string{"dev"},
 					}, "test", services.RoleSet{
-						&types.RoleV5{
+						&types.RoleV6{
 							Metadata: types.Metadata{Name: "dev", Namespace: apidefaults.Namespace},
-							Spec: types.RoleSpecV5{
+							Spec: types.RoleSpecV6{
 								Options: types.RoleOptions{
 									RecordSession: &types.RecordSession{
 										SSH: constants.SessionRecordingModeBestEffort,
@@ -398,7 +397,7 @@ func TestStopUnstarted(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { reg.Close() })
 
-	role, err := types.NewRole("access", types.RoleSpecV5{
+	role, err := types.NewRole("access", types.RoleSpecV6{
 		Allow: types.RoleConditions{
 			RequireSessionJoin: []*types.SessionRequirePolicy{{
 				Name:   "foo",
@@ -547,9 +546,9 @@ func TestSessionRecordingModes(t *testing.T) {
 			t.Cleanup(func() { reg.Close() })
 
 			sess, sessCh := testOpenSession(t, reg, services.RoleSet{
-				&types.RoleV5{
+				&types.RoleV6{
 					Metadata: types.Metadata{Name: "dev", Namespace: apidefaults.Namespace},
-					Spec: types.RoleSpecV5{
+					Spec: types.RoleSpecV6{
 						Options: types.RoleOptions{
 							RecordSession: &types.RecordSession{
 								SSH: tt.sessionRecordingMode,
@@ -767,7 +766,7 @@ func TestTrackingSession(t *testing.T) {
 					SessionRegistryConfig: SessionRegistryConfig{
 						Srv:                   srv,
 						SessionTrackerService: trackingService,
-						clock:                 clockwork.NewFakeClock(), //use a fake clock to prevent the update loop from running
+						clock:                 clockwork.NewFakeClock(), // use a fake clock to prevent the update loop from running
 					},
 				},
 				serverMeta: apievents.ServerMetadata{
@@ -785,5 +784,4 @@ func TestTrackingSession(t *testing.T) {
 			tt.createAssertion(t, trackingService.CreatedCount())
 		})
 	}
-
 }

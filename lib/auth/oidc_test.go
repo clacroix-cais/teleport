@@ -236,7 +236,7 @@ func TestSSODiagnostic(t *testing.T) {
 			idp := newFakeIDP(t, false /* tls */)
 
 			// create role referenced in request.
-			role, err := types.NewRole("access", types.RoleSpecV5{
+			role, err := types.NewRole("access", types.RoleSpecV6{
 				Allow: types.RoleConditions{
 					Logins: []string{"dummy"},
 				},
@@ -798,7 +798,7 @@ func TestUsernameClaim(t *testing.T) {
 	diagCtx := SSODiagContext{}
 
 	// Create role that will be mapped to the user.
-	role, err := types.NewRole("access", types.RoleSpecV5{
+	role, err := types.NewRole("access", types.RoleSpecV6{
 		Allow: types.RoleConditions{},
 	})
 	require.NoError(t, err)

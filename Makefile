@@ -527,7 +527,7 @@ docs-test-whitespace:
 TOOLINGDIR := ${abspath ./build.assets/tooling}
 RENDER_TESTS := $(TOOLINGDIR)/bin/render-tests
 $(RENDER_TESTS): $(wildcard $(TOOLINGDIR)/cmd/render-tests/*.go)
-	cd $(TOOLINGDIR) && go build -o "$@" ./cmd/render-tests
+	cd $(TOOLINGDIR) 
 #
 # Runs all Go/shell tests, called by CI/CD.
 #

@@ -224,7 +224,7 @@ func TestReviewThresholds(t *testing.T) {
 	roles := make(map[string]types.Role)
 
 	for name, conditions := range roleDesc {
-		role, err := types.NewRole(name, types.RoleSpecV5{
+		role, err := types.NewRole(name, types.RoleSpecV6{
 			Allow: conditions,
 		})
 		require.NoError(t, err)
@@ -583,7 +583,6 @@ func TestMaxLength(t *testing.T) {
 
 // TestThresholdReviewFilter verifies basic filter syntax.
 func TestThresholdReviewFilter(t *testing.T) {
-
 	// test cases consist of a context, and various filter expressions
 	// which should or should not match the supplied context.
 	tts := []struct {
@@ -892,7 +891,7 @@ func TestRequestFilterConversion(t *testing.T) {
 // determined for resource access requests
 func TestRolesForResourceRequest(t *testing.T) {
 	// set up test roles
-	roleDesc := map[string]types.RoleSpecV5{
+	roleDesc := map[string]types.RoleSpecV6{
 		"db-admins": {
 			Allow: types.RoleConditions{
 				NodeLabels: types.Labels{
@@ -1065,7 +1064,7 @@ func TestPruneRequestRoles(t *testing.T) {
 	}
 
 	// set up test roles
-	roleDesc := map[string]types.RoleSpecV5{
+	roleDesc := map[string]types.RoleSpecV6{
 		"response-team": {
 			// By default has access to nothing, but can request many types of
 			// resources.

@@ -1183,18 +1183,18 @@ func TestIsMFARequiredUnauthorized(t *testing.T) {
 	require.False(t, resp.Required)
 }
 
-// TestRoleVersions tests that downgraded V4 roles are returned to older
+// TestRoleVersions tests that downgraded V6 roles are returned to older
 // clients, and V5 roles are returned to newer clients.
 func TestRoleVersions(t *testing.T) {
 	srv := newTestTLSServer(t)
 
-	role := &types.RoleV5{
+	role := &types.RoleV6{
 		Kind:    types.KindRole,
 		Version: types.V5,
 		Metadata: types.Metadata{
 			Name: "test_role",
 		},
-		Spec: types.RoleSpecV5{
+		Spec: types.RoleSpecV6{
 			Allow: types.RoleConditions{
 				Rules: []types.Rule{
 					types.NewRule(types.KindRole, services.RO()),
@@ -1218,8 +1218,8 @@ func TestRoleVersions(t *testing.T) {
 	}{
 		{
 			desc:                "old",
-			clientVersion:       "7.1.1",
-			expectedRoleVersion: "v4",
+			clientVersion:       "11.1.1",
+			expectedRoleVersion: "v5",
 			assertErr:           require.NoError,
 		},
 		{
@@ -1230,8 +1230,8 @@ func TestRoleVersions(t *testing.T) {
 		},
 		{
 			desc:                "alpha",
-			clientVersion:       "7.2.4-alpha.0",
-			expectedRoleVersion: "v4",
+			clientVersion:       "11.2.4-alpha.0",
+			expectedRoleVersion: "v5",
 			assertErr:           require.NoError,
 		},
 		{
@@ -1253,7 +1253,7 @@ func TestRoleVersions(t *testing.T) {
 		{
 			desc:                "no version metadata",
 			disableMetadata:     true,
-			expectedRoleVersion: "v4",
+			expectedRoleVersion: "v5",
 			assertErr:           require.NoError,
 		},
 	}
@@ -2600,7 +2600,7 @@ func TestSAMLValidation(t *testing.T) {
 				require.NoError(t, err)
 			}))
 
-			role, err := CreateRole(ctx, server.Auth(), "test_role", types.RoleSpecV5{Allow: tc.allow})
+			role, err := CreateRole(ctx, server.Auth(), "test_role", types.RoleSpecV6{Allow: tc.allow})
 			require.NoError(t, err)
 			user, err := CreateUser(server.Auth(), "test_user", role)
 			require.NoError(t, err)

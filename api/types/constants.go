@@ -276,6 +276,9 @@ const (
 	// KindDevice represents a registered or trusted device.
 	KindDevice = "device"
 
+	// V6 is the sixth version of resources.
+	V6 = "v6"
+
 	// V5 is the fifth version of resources.
 	V5 = "v5"
 

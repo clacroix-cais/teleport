@@ -182,9 +182,9 @@ func (e *SessionAccessEvaluator) matchesKind(allow []string) bool {
 	return false
 }
 
-func HasV5Role(roles []types.Role) bool {
+func HasV5PlusRole(roles []types.Role) bool {
 	for _, role := range roles {
-		if role.GetVersion() == types.V5 {
+		if role.GetVersion() == types.V5 || role.GetVersion() == types.V6 {
 			return true
 		}
 	}
@@ -196,7 +196,7 @@ func HasV5Role(roles []types.Role) bool {
 // If the list is empty, the user doesn't have access to join the session at all.
 func (e *SessionAccessEvaluator) CanJoin(user SessionAccessContext) []types.SessionParticipantMode {
 	// If we don't support session access controls, return the default mode set that was supported prior to Moderated Sessions.
-	if !HasV5Role(user.Roles) {
+	if !HasV5PlusRole(user.Roles) {
 		return preAccessControlsModes(e.kind)
 	}
 
