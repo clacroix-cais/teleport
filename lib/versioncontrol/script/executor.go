@@ -47,12 +47,16 @@ const fileMode os.FileMode = 0600
 
 const createOpts int = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
 
+const defaultShell = "/bin/sh"
+
 // ExecutorConfig configures a script executor.
 type ExecutorConfig struct {
 	// Dir is the directory under which all execs occur.
 	Dir string
 	// Shell is the default shell.
 	Shell string
+	// Clock is used to for timestamps and ttls.
+	Clock clockwork.Clock
 }
 
 // Executor is a helper for managing script execution. In practice, this type doesn't do much except
@@ -63,7 +67,7 @@ type Executor struct {
 	// mu protects internal state for cleanup operations
 	mu sync.Mutex
 
-	dangling []string
+	dangling []Ref
 }
 
 func NewExecutor(cfg ExecutorConfig) (*Executor, error) {
@@ -72,7 +76,11 @@ func NewExecutor(cfg ExecutorConfig) (*Executor, error) {
 	}
 
 	if cfg.Shell == "" {
-		cfg.Shell = "/bin/sh"
+		cfg.Shell = defaultShell
+	}
+
+	if cfg.Clock == nil {
+		cfg.Clock = clockwork.NewRealClock()
 	}
 
 	return &Executor{
@@ -80,8 +88,82 @@ func NewExecutor(cfg ExecutorConfig) (*Executor, error) {
 	}, nil
 }
 
-func (e *Executor) ExpireEntries(clock clockwork.Clock, ttl time.Duration) {
+// ListEntries lists all entries in this executor's cache dir.
+func (e *Executor) ListEntries() ([]Ref, error) {
+	entries, err := os.ReadDir(e.cfg.Dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, trace.Errorf("failed to read exec dir %q: %v", e.cfg.Dir, err)
+	}
 
+	var refs []Ref
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		ref, ok := parseRef(entry.Name())
+		if !ok {
+			continue
+		}
+
+		refs = append(refs, ref)
+	}
+
+	return refs, nil
+}
+
+func (e *Executor) ExpireEntries(ttl time.Duration) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	entries, err := e.ListEntries()
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	var dangling []Ref
+
+	for _, ref := range entries {
+		params, err := e.LoadParams(ref)
+		if err != nil {
+			// failure to load params either means that this entry was just created, or that
+			// it is corrupted/malformed. if it was dangling on the last pass as well, it will
+			// be removed.
+			dangling = append(dangling, ref)
+		}
+
+		// note that we're calculating expiry time based on the 'params' time, not the 'result' time. this is
+		// because we can't guarantee that 'result.json' is ever written.
+		if !params.Time.Add(ttl).After(e.cfg.Clock.Now()) {
+			if err := e.clear(ref); err != nil {
+				log.Warnf("Failed to clear expired exec entry %s: %v", ref, err)
+			}
+		}
+	}
+
+	// entries that were observed to be dangling on the previous pass are
+	// assumed to be permanently malformed and are removed. new dangling entries
+	// are preserved so that they can be checked again later.
+	filtered := dangling[:0]
+Outer:
+	for _, ref := range dangling {
+		for _, prev := range e.dangling {
+			if prev == ref {
+				if err := e.clear(ref); err != nil {
+					log.Warnf("Failed to clear dangling exec entry %s: %v", ref, err)
+				}
+				continue Outer
+			}
+		}
+		filtered = append(filtered, ref)
+	}
+	e.dangling = filtered
+
+	return nil
 }
 
 func (e *Executor) Exec(params types.ExecScript) types.ExecScriptResult {
@@ -89,9 +171,16 @@ func (e *Executor) Exec(params types.ExecScript) types.ExecScriptResult {
 		params.Shell = e.cfg.Shell
 	}
 
+	if params.Time.IsZero() {
+		params.Time = e.cfg.Clock.Now().UTC()
+	}
+
 	exec := execution{
 		params: params,
-		dir:    e.dirPath(params.Type, params.ID),
+		dir: e.dirPath(Ref{
+			Type: params.Type,
+			ID:   params.ID,
+		}),
 	}
 
 	if err := exec.init(); err != nil {
@@ -99,7 +188,7 @@ func (e *Executor) Exec(params types.ExecScript) types.ExecScriptResult {
 		return types.ExecScriptResult{
 			Type:  params.Type,
 			ID:    params.ID,
-			Time:  time.Now().UTC(),
+			Time:  e.cfg.Clock.Now().UTC(),
 			Error: err.Error(),
 		}
 	}
@@ -109,7 +198,7 @@ func (e *Executor) Exec(params types.ExecScript) types.ExecScriptResult {
 	result := types.ExecScriptResult{
 		Type: params.Type,
 		ID:   params.ID,
-		Time: time.Now().UTC(),
+		Time: e.cfg.Clock.Now().UTC(),
 	}
 
 	if err != nil {
@@ -128,58 +217,67 @@ func (e *Executor) Exec(params types.ExecScript) types.ExecScriptResult {
 	return result
 }
 
-func (e *Executor) dirPath(etype string, id uint64) string {
-	return filepath.Join(e.cfg.Dir, fmt.Sprintf("%s-%d", etype, id))
+func (e *Executor) dirPath(ref Ref) string {
+	return filepath.Join(e.cfg.Dir, ref.String())
 }
 
-func (e *Executor) LoadParams(etype string, id uint64) (types.ExecScript, error) {
+func (e *Executor) LoadParams(ref Ref) (types.ExecScript, error) {
 	exec := execution{
-		dir: e.dirPath(etype, id),
+		dir: e.dirPath(ref),
 	}
 
 	var val types.ExecScript
 	return val, exec.readJSON(fileParams, &val)
 }
 
-func (e *Executor) LoadResult(etype string, id uint64) (types.ExecScriptResult, error) {
+func (e *Executor) LoadResult(ref Ref) (types.ExecScriptResult, error) {
 	exec := execution{
-		dir: e.dirPath(etype, id),
+		dir: e.dirPath(ref),
 	}
 
 	var val types.ExecScriptResult
 	return val, exec.readJSON(fileResult, &val)
 }
 
-func (e *Executor) LoadOutput(etype string, id uint64) (string, error) {
+func (e *Executor) LoadOutput(ref Ref) (string, error) {
 	exec := execution{
-		dir: e.dirPath(etype, id),
+		dir: e.dirPath(ref),
 	}
 
 	return exec.readString(fileOutput)
 }
 
-// ref is a reference to a unique execution.
-type ref struct {
+func (e *Executor) clear(ref Ref) error {
+	exec := execution{
+		dir: e.dirPath(ref),
+	}
+
+	return exec.clear()
+}
+
+// Ref is a reference to a unique execution.
+type Ref struct {
 	Type string
 	ID   uint64
 }
 
-func (r ref) String() string {
+func (r Ref) String() string {
 	return fmt.Sprintf("%s-%d", r.Type, r.ID)
 }
 
 // parseRef attempts to decode a ref value from a string.
-func parseRef(s string) (r ref, ok bool) {
+func parseRef(s string) (r Ref, ok bool) {
 	i := strings.LastIndex(s, "-")
 	if i < 1 {
-		return ref{}, false
+		return Ref{}, false
 	}
 
 	rtype, sid := s[:i], s[i+1:]
 	id, err := strconv.ParseUint(sid, 10, 64)
-	return ref{rtype, id}, err == nil
+	return Ref{rtype, id}, err == nil
 }
 
+// execution is a helper used to interact with the files of a specific execution attempt.
 type execution struct {
 	params types.ExecScript
 	dir    string
@@ -211,6 +309,9 @@ func (e *execution) readJSON(file string, value any) error {
 	path := e.path(file)
 	f, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return trace.NotFound("failed to locate file %q", path)
+		}
 		return trace.Errorf("failed to open file %q: %v", path, err)
 	}
 
@@ -225,6 +326,9 @@ func (e *execution) readString(file string) (string, error) {
 	path := e.path(file)
 	f, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return "", trace.NotFound("failed to locate file %q", path)
+		}
 		return "", trace.Errorf("failed to open file %q: %v", path, err)
 	}
 

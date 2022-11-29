@@ -18,18 +18,22 @@ package script
 
 import (
 	"math"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/gravitational/teleport/api/types"
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExecutor(t *testing.T) {
+	t.Parallel()
+
 	tts := []struct {
 		params  types.ExecScript
 		success bool
 		output  string
-		code    int32
 	}{
 		{
 			params: types.ExecScript{
@@ -62,14 +66,35 @@ func TestExecutor(t *testing.T) {
 			},
 			success: false,
 		},
-	}
-
-	executor := Executor{
-		cfg: ExecutorConfig{
-			Shell: "/bin/sh",
-			Dir:   t.TempDir(),
+		{
+			params: types.ExecScript{
+				Type:   "passthrough-var-fail",
+				ID:     1,
+				Script: `set -u; echo "Hello ${passthrough_test_var}!"`,
+			},
+			success: false,
+		},
+		{
+			params: types.ExecScript{
+				Type: "passthrough-var-success",
+				ID:   1,
+				EnvPassthrough: []string{
+					"passthrough_test_var",
+				},
+				Script: `set -u; echo "Hello ${passthrough_test_var}!"`,
+			},
+			success: true,
+			output:  "Hello from parent!\n",
 		},
 	}
+
+	// set an env var to be used in env passthrough tests.
+	os.Setenv("passthrough_test_var", "from parent")
+
+	executor, err := NewExecutor(ExecutorConfig{
+		Dir: t.TempDir(),
+	})
+	require.NoError(t, err)
 
 	for _, tt := range tts {
 
@@ -78,37 +103,104 @@ func TestExecutor(t *testing.T) {
 		require.Equal(t, tt.success, result.Success, "result=%+v", result)
 
 		if tt.success {
-			out, err := executor.LoadOutput(tt.params.Type, tt.params.ID)
+			out, err := executor.LoadOutput(Ref{
+				Type: tt.params.Type,
+				ID:   tt.params.ID,
+			})
 			require.NoError(t, err, "result=%+v", result)
 
 			require.Equal(t, tt.output, out, "result=%+v", result)
 		}
-
-		require.Equal(t, tt.code, result.Code, "result=%+v", result)
 	}
 }
 
+func TestExpireEntries(t *testing.T) {
+	t.Parallel()
+
+	clock := clockwork.NewFakeClock()
+
+	executor, err := NewExecutor(ExecutorConfig{
+		Dir:   t.TempDir(),
+		Clock: clock,
+	})
+	require.NoError(t, err)
+
+	r1 := executor.Exec(types.ExecScript{
+		Type:   "t",
+		ID:     1,
+		Script: `echo "one"`,
+	})
+	require.True(t, r1.Success)
+
+	clock.Advance(time.Minute)
+
+	r2 := executor.Exec(types.ExecScript{
+		Type:   "t",
+		ID:     2,
+		Script: `echo "two"`,
+	})
+	require.True(t, r2.Success)
+
+	// verify that both entries are present
+	entries, err := executor.ListEntries()
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+
+	// perform an expiry that shouldn't remove either entry
+	err = executor.ExpireEntries(time.Minute * 2)
+	require.NoError(t, err)
+
+	// verify that both entries are still present
+	entries, err = executor.ListEntries()
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+
+	// advance s.t. one of the two entries are expired
+	clock.Advance(time.Second * 90)
+	err = executor.ExpireEntries(time.Minute * 2)
+	require.NoError(t, err)
+
+	// verify that the newer entry is still present
+	entries, err = executor.ListEntries()
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, entries[0], Ref{Type: "t", ID: 2})
+
+	// advance s.t. final entry expires
+	clock.Advance(time.Second * 60)
+	err = executor.ExpireEntries(time.Minute * 2)
+	require.NoError(t, err)
+
+	// verify all entries removed
+	entries, err = executor.ListEntries()
+	require.NoError(t, err)
+	require.Len(t, entries, 0)
+
+}
+
 func TestRefs(t *testing.T) {
+	t.Parallel()
+
 	tts := []struct {
-		r ref
+		r Ref
 		s string
 	}{
 		{
-			r: ref{
-				Type: "basic-ref",
+			r: Ref{
+				Type: "basic-Ref",
 				ID:   123,
 			},
-			s: "basic-ref-123",
+			s: "basic-Ref-123",
 		},
 		{
-			r: ref{
+			r: Ref{
 				Type: "big-num",
 				ID:   math.MaxUint64,
 			},
 			s: "big-num-18446744073709551615",
 		},
 		{
-			r: ref{
+			r: Ref{
 				Type: "small-num",
 				ID:   0,
 			},
