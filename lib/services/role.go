@@ -2719,7 +2719,7 @@ func MarshalRole(role types.Role, opts ...MarshalOption) ([]byte, error) {
 // older instances. Makes a shallow copy if the conversion is necessary. The
 // passed in role will not be mutated.
 // DELETE IN 13.0.0
-func DowngradeRoleToV6(r *types.RoleV6) (*types.RoleV6, error) {
+func DowngradeRoleToV5(r *types.RoleV6) (*types.RoleV6, error) {
 	switch r.Version {
 	case types.V3, types.V4, types.V5:
 		return r, nil

@@ -1776,7 +1776,7 @@ func downgradeRole(ctx context.Context, role *types.RoleV6) (*types.RoleV6, erro
 
 	if clientVersion == nil || clientVersion.LessThan(*MinSupportedKubePodAccessRequestsVersion) {
 		log.Debugf(`Client version "%s" is unknown or less than 12.0.0, converting role to v5`, clientVersionString)
-		downgraded, err := services.DowngradeRoleToV6(role)
+		downgraded, err := services.DowngradeRoleToV5(role)
 		if err != nil {
 			return nil, trace.Wrap(err)
 		}
