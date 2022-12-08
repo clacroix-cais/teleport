@@ -175,12 +175,32 @@ func (e *Executor) Exec(params types.ExecScript) types.ExecScriptResult {
 		params.Time = e.cfg.Clock.Now().UTC()
 	}
 
+	if err := params.Check(); err != nil {
+		return types.ExecScriptResult{
+			Type:  params.Type,
+			ID:    params.ID,
+			Time:  e.cfg.Clock.Now().UTC(),
+			Error: err.Error(),
+		}
+	}
+
+	dir, err := e.dirPath(Ref{
+		Type: params.Type,
+		ID:   params.ID,
+	})
+
+	if err != nil {
+		return types.ExecScriptResult{
+			Type:  params.Type,
+			ID:    params.ID,
+			Time:  e.cfg.Clock.Now().UTC(),
+			Error: err.Error(),
+		}
+	}
+
 	exec := execution{
 		params: params,
-		dir: e.dirPath(Ref{
-			Type: params.Type,
-			ID:   params.ID,
-		}),
+		dir:    dir,
 	}
 
 	if err := exec.init(); err != nil {
@@ -217,13 +237,23 @@ func (e *Executor) Exec(params types.ExecScript) types.ExecScriptResult {
 	return result
 }
 
-func (e *Executor) dirPath(ref Ref) string {
-	return filepath.Join(e.cfg.Dir, ref.String())
+func (e *Executor) dirPath(ref Ref) (string, error) {
+	if !types.IsStrictKebabCase(ref.Type) {
+		// we're extra stringent about exec type name since it is
+		// used as dir name.
+		return "", trace.BadParameter("invalid exec type %q", ref.Type)
+	}
+
+	return filepath.Join(e.cfg.Dir, ref.String()), nil
 }
 
 func (e *Executor) LoadParams(ref Ref) (types.ExecScript, error) {
+	dir, err := e.dirPath(ref)
+	if err != nil {
+		return types.ExecScript{}, trace.Wrap(err)
+	}
 	exec := execution{
-		dir: e.dirPath(ref),
+		dir: dir,
 	}
 
 	var val types.ExecScript
@@ -231,8 +261,12 @@ func (e *Executor) LoadParams(ref Ref) (types.ExecScript, error) {
 }
 
 func (e *Executor) LoadResult(ref Ref) (types.ExecScriptResult, error) {
+	dir, err := e.dirPath(ref)
+	if err != nil {
+		return types.ExecScriptResult{}, trace.Wrap(err)
+	}
 	exec := execution{
-		dir: e.dirPath(ref),
+		dir: dir,
 	}
 
 	var val types.ExecScriptResult
@@ -240,16 +274,24 @@ func (e *Executor) LoadResult(ref Ref) (types.ExecScriptResult, error) {
 }
 
 func (e *Executor) LoadOutput(ref Ref) (string, error) {
+	dir, err := e.dirPath(ref)
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
 	exec := execution{
-		dir: e.dirPath(ref),
+		dir: dir,
 	}
 
 	return exec.readString(fileOutput)
 }
 
 func (e *Executor) clear(ref Ref) error {
+	dir, err := e.dirPath(ref)
+	if err != nil {
+		return trace.Wrap(err)
+	}
 	exec := execution{
-		dir: e.dirPath(ref),
+		dir: dir,
 	}
 
 	return exec.clear()
@@ -352,7 +394,7 @@ func (e *execution) run() (*os.ProcessState, error) {
 	// the path to the interpreter. Commands will take one of two possible forms: '<cmd> <script>' or
 	// '<cmd> <arg> <script>'. the main reason to do this is to support the common `/usr/bin/env <interpreter>`
 	// pattern.
-	parts := strings.SplitN(e.params.Shell, " ", 2)
+	parts := strings.SplitN(strings.TrimSpace(e.params.Shell), " ", 2)
 	parts = append(parts, e.path(fileScript))
 
 	cmd := exec.Command(parts[0], parts[1:]...)

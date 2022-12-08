@@ -280,6 +280,10 @@ const (
 	// KindHostCert, this kind is not backed by a real resource.
 	KindUsageEvent = "usage_event"
 
+	// KindLocalScriptInstaller is a script-based installer used by the version control system
+	// to upgrade teleport instances.
+	KindLocalScriptInstaller = "local_script_installer"
+
 	// V5 is the fifth version of resources.
 	V5 = "v5"
 

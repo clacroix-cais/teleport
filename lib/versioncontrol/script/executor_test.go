@@ -37,7 +37,16 @@ func TestExecutor(t *testing.T) {
 	}{
 		{
 			params: types.ExecScript{
-				Type: "basic-shell",
+				Type:   "trivial-case",
+				ID:     1,
+				Script: `echo "hello!"`,
+			},
+			success: true,
+			output:  "hello!\n",
+		},
+		{
+			params: types.ExecScript{
+				Type: "basic-env",
 				ID:   1,
 				Env: map[string]string{
 					"name": "alice",
@@ -85,6 +94,32 @@ func TestExecutor(t *testing.T) {
 			},
 			success: true,
 			output:  "Hello from parent!\n",
+		},
+		{
+			params: types.ExecScript{
+				Type:   "../malicious-type-name",
+				ID:     1,
+				Script: `echo "hello!"`,
+			},
+			success: false,
+		},
+		{
+			params: types.ExecScript{
+				Type: "invalid-env-key",
+				ID:   1,
+				Env: map[string]string{
+					"invalid=name": "never",
+				},
+				Script: `echo "hello!"`,
+			},
+			success: false,
+		},
+		{
+			params: types.ExecScript{
+				Type: "missing-script",
+				ID:   1,
+			},
+			success: false,
 		},
 	}
 

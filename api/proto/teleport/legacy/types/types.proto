@@ -541,7 +541,7 @@ message MySQLOptions {
 }
 
 // LocalScriptInstallerV1 is used by the version control system to install
-// new teleport versions via a user-provided script.
+// new teleport versions via user-provided scripts.
 message LocalScriptInstallerV1 {
   // Header is the common resource header.
   ResourceHeader Header = 1 [
@@ -564,14 +564,18 @@ message LocalScriptInstallerSpecV1 {
   // Env is a set of optional env vars to be made available to the script.
   map<string, string> Env = 2 [(gogoproto.jsontag) = "env,omitempty"];
 
+  // EnvPassthrough is an optional list of environment variables that are allowed to be
+  // enherited from the teleport instance's environment.
+  repeated string EnvPassthrough = 3 [(gogoproto.jsontag) = "env_passthrough,omitempty"];
+
   // Shell optionally overrides the target shell (defaults to `/bin/sh`).
-  string Shell = 3 [(gogoproto.jsontag) = "shell,omitempty"];
+  string Shell = 4 [(gogoproto.jsontag) = "shell,omitempty"];
 
   // InstallScript is the install script to be run.
-  string InstallScript = 4 [(gogoproto.jsontag) = "install.sh,omitempty"];
+  string InstallScript = 5 [(gogoproto.jsontag) = "install.sh,omitempty"];
 
   // RestartScript is the restart script to be run.
-  string RestartScript = 5 [(gogoproto.jsontag) = "restart.sh,omitempty"];
+  string RestartScript = 6 [(gogoproto.jsontag) = "restart.sh,omitempty"];
 }
 
 // ExecScript is a message representing a script to be executed against a teleport instance. Used
